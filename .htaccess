@@ -1,0 +1,31 @@
+# Enable CORS
+Header set Access-Control-Allow-Origin "*"
+
+# Set correct MIME types
+AddType application/wasm .wasm
+AddType application/octet-stream .data
+AddType application/javascript .js
+AddType application/octet-stream .symbols.json
+
+# Set correct Content-Encoding for brotli-compressed files
+<FilesMatch "\.data\.br$">
+    Header set Content-Encoding "br"
+    Header set Content-Type "application/octet-stream"
+</FilesMatch>
+
+<FilesMatch "\.js\.br$">
+    Header set Content-Encoding "br"
+    Header set Content-Type "application/javascript"
+</FilesMatch>
+
+<FilesMatch "\.wasm\.br$">
+    Header set Content-Encoding "br"
+    Header set Content-Type "application/wasm"
+</FilesMatch>
+
+# Enable CORS for Unity WebGL
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type"
+</IfModule> 

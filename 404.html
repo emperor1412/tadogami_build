@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Redirecting...</title>
+    <script>
+        // Get the current path
+        var pathSegments = window.location.pathname.split('/');
+        var currentPath = pathSegments[pathSegments.length - 1];
+        
+        // If the file ends with .br, set the correct headers
+        if (currentPath.endsWith('.br')) {
+            // Create a new XMLHttpRequest
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', window.location.pathname, true);
+            xhr.responseType = 'arraybuffer';
+            
+            // Set the correct headers
+            xhr.setRequestHeader('Accept-Encoding', 'br');
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    // The browser will automatically decompress the brotli content
+                    // since we set the correct Accept-Encoding header
+                    window.location.reload();
+                }
+            };
+            
+            xhr.send();
+        } else {
+            // Redirect to the main page
+            window.location.href = '/';
+        }
+    </script>
+</head>
+<body>
+    <p>Redirecting...</p>
+</body>
+</html> 

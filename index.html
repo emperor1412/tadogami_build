@@ -6,8 +6,16 @@
     <title>Unity Web Player | AutoRPGAdventure</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
+    <script>
+      // Function to handle brotli compression
+      function handleBrotliCompression() {
+        if (window.location.pathname.endsWith('.br')) {
+          window.location.reload();
+        }
+      }
+    </script>
   </head>
-  <body>
+  <body onload="handleBrotliCompression()">
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -63,6 +71,17 @@
         productName: "AutoRPGAdventure",
         productVersion: "1.0",
         showBanner: unityShowBanner,
+        // Add these configurations for better compatibility
+        memoryInitializerPrefixURL: buildUrl + "/",
+        backgroundColor: "#231F20",
+        // Enable better error handling
+        onProgress: function(progress) {
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+        },
+        // Add error handling
+        onError: function(message) {
+          unityShowBanner(message, 'error');
+        }
       };
 
       // By default, Unity keeps WebGL canvas render target size matched with
