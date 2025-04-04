@@ -6,18 +6,10 @@
     <title>Unity Web Player | AutoRPGAdventure</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
-    <script>
-      // Function to handle brotli compression
-      function handleBrotliCompression() {
-        if (window.location.pathname.endsWith('.br')) {
-          window.location.reload();
-        }
-      }
-    </script>
   </head>
-  <body onload="handleBrotliCompression()">
+  <body>
     <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
+      <canvas id="unity-canvas" width=432 height=768 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
@@ -63,25 +55,14 @@
       var loaderUrl = buildUrl + "/WebGL.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/WebGL.data.br",
-        frameworkUrl: buildUrl + "/WebGL.framework.js.br",
-        codeUrl: buildUrl + "/WebGL.wasm.br",
+        dataUrl: buildUrl + "/WebGL.data",
+        frameworkUrl: buildUrl + "/WebGL.framework.js",
+        codeUrl: buildUrl + "/WebGL.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "AutoRPGAdventure",
         productVersion: "1.0",
         showBanner: unityShowBanner,
-        // Add these configurations for better compatibility
-        memoryInitializerPrefixURL: buildUrl + "/",
-        backgroundColor: "#231F20",
-        // Enable better error handling
-        onProgress: function(progress) {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-        },
-        // Add error handling
-        onError: function(message) {
-          unityShowBanner(message, 'error');
-        }
       };
 
       // By default, Unity keeps WebGL canvas render target size matched with
@@ -117,8 +98,8 @@
 
       } else {
         // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
+        canvas.style.width = "432px";
+        canvas.style.height = "768px";
       }
 
       document.querySelector("#unity-loading-bar").style.display = "block";
