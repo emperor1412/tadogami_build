@@ -207,20 +207,16 @@
         return null;
     }
 
-    // Add this function to handle Telegram viewport issues
+    // Sửa lại hàm handleTelegramViewport để không sử dụng phương thức không tồn tại
     function handleTelegramViewport() {
-        if (typeof telegramApps !== 'undefined') {
-            try {
-                // Request viewport expansion in Telegram
-                telegramApps.sdk.expand();
-                console.log("Telegram viewport expanded");
-                
-                // Force resize after a short delay
-                setTimeout(resizeCanvas, 500);
-            } catch (e) {
-                console.error("Error expanding Telegram viewport:", e);
-            }
-        }
+        // Chỉ thực hiện resize canvas mà không gọi các phương thức không rõ ràng
+        setTimeout(resizeCanvas, 500);
+        
+        // Ghi log để debug
+        console.log("Telegram viewport handler - forcing canvas resize");
+        
+        // Ghi log thông tin về user agent để debug
+        console.log("User Agent:", navigator.userAgent);
     }
 
     // Call this function on page load
