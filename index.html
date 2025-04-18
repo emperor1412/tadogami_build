@@ -22,8 +22,8 @@
         
         /* Make the container take full screen */
         #unity-container {
-            width: 100vw !important;
-            height: 100vh !important;
+            width: 100% !important;
+            height: 100% !important;
             position: fixed !important;
             left: 0 !important;
             top: 0 !important;
@@ -37,6 +37,9 @@
             width: 100% !important;
             height: 100% !important;
             display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
         }
         
         /* Remove any margins or padding */
@@ -47,6 +50,7 @@
             width: 100% !important;
             height: 100% !important;
             position: fixed !important;
+            background-color: black !important;
         }
         
         /* Ensure loading bar is centered */
@@ -114,6 +118,8 @@
     function resizeCanvas() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
         console.log("Canvas resized to:", canvas.width, "x", canvas.height);
     }
     
@@ -140,19 +146,23 @@
             // Set fullscreen with device detection
             if (instance.SetFullscreen) {
                 console.log("Checking device for fullscreen compatibility");
-                // Check if device is iOS (iPad or iPhone)
+                // Check if device is iOS (iPad or iPhone) or Telegram Desktop
                 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                const isTelegramDesktop = /TelegramDesktop/i.test(navigator.userAgent);
                 
-                if (isIOS) {
-                    console.log("iOS device detected, skipping SetFullscreen call");
-                    // For iOS devices, we rely on CSS fullscreen instead of the Unity fullscreen API
+                if (isIOS || isTelegramDesktop) {
+                    console.log("iOS or Telegram Desktop detected, using CSS fullscreen");
+                    // Force canvas to take full viewport
+                    resizeCanvas();
                 } else {
                     console.log("Setting fullscreen mode");
                     try {
                         instance.SetFullscreen(1);
                     } catch (error) {
                         console.error("Error setting fullscreen:", error);
+                        // Fallback to CSS fullscreen
+                        resizeCanvas();
                     }
                 }
             }
@@ -197,8 +207,26 @@
         return null;
     }
 
+    // Add this function to handle Telegram viewport issues
+    function handleTelegramViewport() {
+        if (typeof telegramApps !== 'undefined') {
+            try {
+                // Request viewport expansion in Telegram
+                telegramApps.sdk.expand();
+                console.log("Telegram viewport expanded");
+                
+                // Force resize after a short delay
+                setTimeout(resizeCanvas, 500);
+            } catch (e) {
+                console.error("Error expanding Telegram viewport:", e);
+            }
+        }
+    }
+
+    // Call this function on page load
     window.addEventListener('load', () => {
         console.log("Page loaded - URL:", window.location.href);
+        handleTelegramViewport();
     });
 
     window.onerror = function(msg, url, line, col, error) {
