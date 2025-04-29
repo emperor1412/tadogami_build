@@ -179,27 +179,67 @@
         // Notify Unity about resize if instance is ready
         if (unityInstance && isUnityLoaded) {
             try {
-                unityInstance.SendMessage("WebGLBridge", "OnWindowResize", 
-                    JSON.stringify({
-                        width: canvas.width, 
-                        height: canvas.height,
-                        pixelRatio: pixelRatio
-                    }));
+                // Check if the target object and function exist before sending
+                // Note: This basic check might not be foolproof, but helps.
+                // A more robust solution involves a handshake mechanism with Unity.
+                if (unityInstance.Module && 
+                    unityInstance.Module.SendMessage) {
+                        
+                    unityInstance.SendMessage("WebGLBridge", "OnWindowResize", 
+                        JSON.stringify({
+                            width: canvas.width, 
+                            height: canvas.height,
+                            pixelRatio: pixelRatio
+                        }));
+                    console.log("Resize message sent to Unity.");
+                } else {
+                    console.log("Unity SendMessage function not available yet.");
+                }
             } catch (e) {
-                console.log("Could not send resize event to Unity:", e);
+                // Log specific error if SendMessage fails after checks
+                console.error("Error sending resize event to Unity:", e);
             }
+        } else {
+            // Log if resize happens before Unity is marked as loaded
+            // console.log("Resize occurred, but Unity not loaded yet. Message not sent.");
         }
     }
     
+    // Debounce function to limit resize calls
+    function debounce(func, wait) {
+        let timeout;
+        return function() {
+            const context = this;
+            const args = arguments;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), wait);
+        };
+    }
+    
+    // Create debounced version of resize with different delays
+    const debouncedResize = debounce(resizeCanvas, 100);
+    const delayedResize = debounce(resizeCanvas, 500); // Longer delay for post-loading scenarios
+    
+    // Single resize scheduler that cancels previous scheduled resizes
+    let resizeTimeout = null;
+    function scheduleResize(delay = 200) {
+        // Clear any existing scheduled resize
+        if (resizeTimeout) {
+            clearTimeout(resizeTimeout);
+        }
+        // Schedule a single resize
+        resizeTimeout = setTimeout(resizeCanvas, delay);
+    }
+    
     // Initial resize and add event listener for window resize
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); // Immediate first resize
+    window.addEventListener('resize', debouncedResize);
 
     // Force resize on visibility change (helps with Telegram app switching)
     document.addEventListener('visibilitychange', function() {
         if (!document.hidden) {
             console.log("Tab became visible - forcing resize");
-            setTimeout(resizeCanvas, 100);
+            scheduleResize(300); // Single resize with appropriate delay
         }
     });
 
@@ -230,10 +270,8 @@
                     
                     if (isIOS || isTelegramDesktop) {
                         console.log("iOS or Telegram Desktop detected, using CSS fullscreen");
-                        // Force canvas to take full viewport
-                        setTimeout(resizeCanvas, 100);
-                        setTimeout(resizeCanvas, 500);
-                        setTimeout(resizeCanvas, 1000);
+                        // Force canvas to take full viewport - single resize with appropriate delay
+                        delayedResize();
                     } else {
                         console.log("Setting fullscreen mode");
                         try {
@@ -241,7 +279,7 @@
                         } catch (error) {
                             console.error("Error setting fullscreen:", error);
                             // Fallback to CSS fullscreen
-                            setTimeout(resizeCanvas, 100);
+                            delayedResize();
                         }
                     }
                 }
@@ -249,9 +287,6 @@
                 // Mark Unity as loaded
                 isUnityLoaded = true;
                 
-                // Force another resize after a delay to ensure proper rendering
-                setTimeout(resizeCanvas, 200);
-
                 // Wait for scene to load and send token
                 setTimeout(() => {
                     console.log("Attempting to send token after delay");
@@ -297,7 +332,7 @@
     function handleTelegramViewport() {
         console.log("Telegram viewport handler - forcing canvas resize");
         
-        // Force multiple resize attempts to ensure proper rendering
+        // Immediate resize
         resizeCanvas();
         
         // For mobile devices, we need special handling
@@ -311,19 +346,10 @@
                 console.log("Telegram WebApp expanded");
             }
             
-            // Apply additional mobile-specific resizing with delays
-            setTimeout(resizeCanvas, 100);
-            setTimeout(resizeCanvas, 300);
-            setTimeout(resizeCanvas, 500);
-            setTimeout(resizeCanvas, 1000);
-            
-            // Set up continuous resize monitoring for mobile
-            setInterval(resizeCanvas, 2000);
+            // Single delayed resize for mobile
+            delayedResize();
         } else {
-            // Desktop handling
-            setTimeout(resizeCanvas, 100);
-            setTimeout(resizeCanvas, 500);
-            setTimeout(resizeCanvas, 1000);
+            // Desktop handling - no additional resize needed as we already called resizeCanvas()
         }
         
         // Log user agent for debugging
@@ -336,7 +362,7 @@
             // Add MutationObserver to detect DOM changes that might affect layout
             const observer = new MutationObserver(function(mutations) {
                 console.log("DOM mutation detected, forcing resize");
-                setTimeout(resizeCanvas, 50);
+                debouncedResize(); // Use debounced resize to prevent multiple calls
             });
             
             // Start observing the document with the configured parameters
@@ -348,29 +374,17 @@
         }
     }
 
-    // Call this function on page load and DOMContentLoaded
-    window.addEventListener('load', () => {
-        console.log("Page loaded - URL:", window.location.href);
-        handleTelegramViewport();
-    });
-    
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log("DOM content loaded");
-        handleTelegramViewport();
-    });
-
     // Add orientation change handler for mobile devices
     window.addEventListener('orientationchange', function() {
         console.log("Orientation changed, forcing resize");
-        setTimeout(resizeCanvas, 100);
-        setTimeout(resizeCanvas, 500);
+        scheduleResize(300); // Single resize with appropriate delay
     });
     
     // Handle Telegram specific events
     if (window.Telegram && window.Telegram.WebApp) {
         window.Telegram.WebApp.onEvent('viewportChanged', function() {
             console.log("Telegram viewport changed event");
-            setTimeout(resizeCanvas, 100);
+            debouncedResize(); // Use debounced resize to prevent multiple calls
         });
     }
 
@@ -412,20 +426,18 @@
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         
+        // Always use a delayed resize when triggered by Unity
+        // This prevents issues if Unity calls this function before everything is ready
+        delayedResize(); 
+        
         if (isIOS) {
-            // Force canvas to take full viewport
-            setTimeout(resizeCanvas, 100);
-            setTimeout(resizeCanvas, 500);
-            setTimeout(resizeCanvas, 1000);
-            
-            // Ensure Telegram WebApp is expanded
+            // Ensure Telegram WebApp is expanded on iOS
             if (window.Telegram && window.Telegram.WebApp) {
                 window.Telegram.WebApp.expand();
             }
-        } else {
-            // Xử lý bình thường cho các thiết bị khác
-            resizeCanvas();
         }
+        // Removed the direct resizeCanvas() call for non-iOS here
+        // as delayedResize() handles it.
     }
 </script>
 </body>
