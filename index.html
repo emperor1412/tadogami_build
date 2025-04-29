@@ -25,10 +25,10 @@
             display: none !important;
         }
         
-        /* Make the container take upper half of the screen */
+        /* Make the container take full screen */
         #unity-container {
             width: 100% !important;
-            height: 50% !important;
+            height: 100% !important;
             position: fixed !important;
             left: 0 !important;
             top: 0 !important;
@@ -37,7 +37,7 @@
             overflow: hidden !important;
         }
         
-        /* Make the canvas take full width and half height */
+        /* Make the canvas take full screen */
         #unity-canvas {
             width: 100% !important;
             height: 100% !important;
@@ -157,14 +157,14 @@
         loadUnity(loaderUrl, canvas, config);
     }
 
-    // Set canvas size to match window dimensions (half height)
+    // Set canvas size to match window dimensions
     function resizeCanvas() {
         // Get device pixel ratio
         const pixelRatio = window.devicePixelRatio || 1;
         
         // Get viewport dimensions
         const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight * 0.5; // Only use half the height
+        const viewportHeight = window.innerHeight;
         
         // Set canvas dimensions
         canvas.width = viewportWidth * pixelRatio;
