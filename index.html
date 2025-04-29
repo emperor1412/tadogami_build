@@ -128,18 +128,34 @@
         updateBannerVisibility();
     }
 
-    var buildUrl = "Build";
-    var loaderUrl = buildUrl + "/Tadogami_Build.loader.js";
-    var config = {
-        dataUrl: buildUrl + "/Tadogami_Build.data",
-        frameworkUrl: buildUrl + "/Tadogami_Build.framework.js",
-        codeUrl: buildUrl + "/Tadogami_Build.wasm",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "DefaultCompany",
-        productName: "AutoRPGAdventure",
-        productVersion: "1.0",
-        showBanner: unityShowBanner,
-    };
+    // Thêm code fetch version để ngăn chặn caching
+    fetch('version.txt?' + new Date().getTime())
+        .then(response => response.text())
+        .then(version => {
+            console.log("Game version:", version);
+            loadGame(version);
+        })
+        .catch(error => {
+            console.error("Error fetching version:", error);
+            loadGame("unknown");
+        });
+
+    function loadGame(version) {
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/Tadogami_Build.loader.js";
+        var config = {
+            dataUrl: buildUrl + "/Tadogami_Build.data?v=" + version,
+            frameworkUrl: buildUrl + "/Tadogami_Build.framework.js?v=" + version,
+            codeUrl: buildUrl + "/Tadogami_Build.wasm?v=" + version,
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "DefaultCompany",
+            productName: "AutoRPGAdventure",
+            productVersion: version,
+            showBanner: unityShowBanner,
+        };
+
+        loadUnity(loaderUrl, canvas, config);
+    }
 
     // Set canvas size to match window dimensions
     function resizeCanvas() {
@@ -187,82 +203,84 @@
         }
     });
 
-    document.querySelector("#unity-loading-bar").style.display = "block";
+    function loadUnity(loaderUrl, canvas, config) {
+        document.querySelector("#unity-loading-bar").style.display = "block";
 
-    var script = document.createElement("script");
-    script.src = loaderUrl;
-    script.onload = () => {
-        console.log("Unity loader script loaded");
-        
-        createUnityInstance(canvas, config, (progress) => {
-            console.log("Loading progress:", progress);
-            document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-        }).then((instance) => {
-            console.log("Unity instance created");
-            unityInstance = instance;
+        var script = document.createElement("script");
+        script.src = loaderUrl;
+        script.onload = () => {
+            console.log("Unity loader script loaded");
             
-            document.querySelector("#unity-loading-bar").style.display = "none";
-            
-            // Set fullscreen with device detection
-            if (instance.SetFullscreen) {
-                console.log("Checking device for fullscreen compatibility");
-                // Check if device is iOS (iPad or iPhone) or Telegram Desktop
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                const isTelegramDesktop = /TelegramDesktop/i.test(navigator.userAgent);
+            createUnityInstance(canvas, config, (progress) => {
+                console.log("Loading progress:", progress);
+                document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+            }).then((instance) => {
+                console.log("Unity instance created");
+                unityInstance = instance;
                 
-                if (isIOS || isTelegramDesktop) {
-                    console.log("iOS or Telegram Desktop detected, using CSS fullscreen");
-                    // Force canvas to take full viewport
-                    setTimeout(resizeCanvas, 100);
-                    setTimeout(resizeCanvas, 500);
-                    setTimeout(resizeCanvas, 1000);
-                } else {
-                    console.log("Setting fullscreen mode");
-                    try {
-                        instance.SetFullscreen(1);
-                    } catch (error) {
-                        console.error("Error setting fullscreen:", error);
-                        // Fallback to CSS fullscreen
-                        setTimeout(resizeCanvas, 100);
-                    }
-                }
-            }
-
-            // Mark Unity as loaded
-            isUnityLoaded = true;
-            
-            // Force another resize after a delay to ensure proper rendering
-            setTimeout(resizeCanvas, 200);
-
-            // Wait for scene to load and send token
-            setTimeout(() => {
-                console.log("Attempting to send token after delay");
-                try {
-                    // Test connection first
-                    unityInstance.SendMessage("WebGLBridge", "TestConnection");
-                    console.log("Test connection successful");
+                document.querySelector("#unity-loading-bar").style.display = "none";
+                
+                // Set fullscreen with device detection
+                if (instance.SetFullscreen) {
+                    console.log("Checking device for fullscreen compatibility");
+                    // Check if device is iOS (iPad or iPhone) or Telegram Desktop
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                    const isTelegramDesktop = /TelegramDesktop/i.test(navigator.userAgent);
                     
-                    // Get and send token
-                    const token = getLoginToken();
-                    if (token) {
-                        unityInstance.SendMessage("WebGLBridge", "OnLoginTokenReceived", token);
-                        console.log("Token sent to Unity:", token);
+                    if (isIOS || isTelegramDesktop) {
+                        console.log("iOS or Telegram Desktop detected, using CSS fullscreen");
+                        // Force canvas to take full viewport
+                        setTimeout(resizeCanvas, 100);
+                        setTimeout(resizeCanvas, 500);
+                        setTimeout(resizeCanvas, 1000);
                     } else {
-                        unityInstance.SendMessage("WebGLBridge", "OnLoginTokenReceived", "");
-                        console.log("No token found in URL, sending default");
+                        console.log("Setting fullscreen mode");
+                        try {
+                            instance.SetFullscreen(1);
+                        } catch (error) {
+                            console.error("Error setting fullscreen:", error);
+                            // Fallback to CSS fullscreen
+                            setTimeout(resizeCanvas, 100);
+                        }
                     }
-                } catch (error) {
-                    console.error("Error sending message to Unity:", error);
                 }
-            }, 2000);
 
-        }).catch((message) => {
-            console.error("Unity creation error:", message);
-        });
-    };
+                // Mark Unity as loaded
+                isUnityLoaded = true;
+                
+                // Force another resize after a delay to ensure proper rendering
+                setTimeout(resizeCanvas, 200);
 
-    document.body.appendChild(script);
+                // Wait for scene to load and send token
+                setTimeout(() => {
+                    console.log("Attempting to send token after delay");
+                    try {
+                        // Test connection first
+                        instance.SendMessage("WebGLBridge", "TestConnection");
+                        console.log("Test connection successful");
+                        
+                        // Get and send token
+                        const token = getLoginToken();
+                        if (token) {
+                            instance.SendMessage("WebGLBridge", "OnLoginTokenReceived", token);
+                            console.log("Token sent to Unity:", token);
+                        } else {
+                            instance.SendMessage("WebGLBridge", "OnLoginTokenReceived", "");
+                            console.log("No token found in URL, sending default");
+                        }
+                    } catch (error) {
+                        console.error("Error sending message to Unity:", error);
+                    }
+                }, 2000);
+
+            }).catch((message) => {
+                console.error("Unity creation error:", message);
+            });
+        };
+
+        document.body.appendChild(script);
+    }
 
     function getLoginToken() {
         console.log("Current URL:", window.location.href);
@@ -341,31 +359,6 @@
         handleTelegramViewport();
     });
 
-    window.onerror = function(msg, url, line, col, error) {
-        console.error("Global error:", {
-            message: msg,
-            url: url,
-            line: line,
-            column: col,
-            error: error
-        });
-    };
-
-    try {
-        console.log("Telegram SDK available:", typeof telegramApps !== 'undefined');
-        if (typeof telegramApps !== 'undefined') {
-            console.log("Telegram SDK version:", telegramApps.sdk.version);
-            try {
-                const params = telegramApps.sdk.retrieveLaunchParams();
-                console.log("Launch params available in HTML:", params);
-            } catch (e) {
-                console.error("Error retrieving launch params in HTML:", e);
-            }
-        }
-    } catch (e) {
-        console.error("Error checking Telegram SDK:", e);
-    }
-
     // Add orientation change handler for mobile devices
     window.addEventListener('orientationchange', function() {
         console.log("Orientation changed, forcing resize");
@@ -379,6 +372,60 @@
             console.log("Telegram viewport changed event");
             setTimeout(resizeCanvas, 100);
         });
+    }
+
+    // Thêm các hàm JavaScript mà Unity có thể gọi
+    function exampleFunction(parameter) {
+        console.log("Function called from Unity with parameter: " + parameter);
+        // Thực hiện các hành động cần thiết ở đây
+        alert("Message from Unity: " + parameter);
+    }
+    
+    // Thêm các hàm khác mà bạn muốn gọi từ Unity
+    function refreshPage() {
+        console.log("Refreshing page from Unity request");
+        window.location.reload();
+    }
+    
+    function navigateToUrl(url) {
+        console.log("Navigating to: " + url);
+        window.location.href = url;
+    }
+    
+    function sendAnalyticsEvent(eventData) {
+        console.log("Sending analytics event: " + eventData);
+        try {
+            const data = JSON.parse(eventData);
+            if (analytics) {
+                analytics.logEvent(data.eventName, data.parameters);
+                console.log("Analytics event sent successfully");
+            }
+        } catch (error) {
+            console.error("Error sending analytics event: " + error);
+        }
+    }
+
+    // Hàm đặc biệt cho Unity gọi
+    function forceIOSResize(parameter) {
+        console.log("Force iOS resize called with parameter:", parameter);
+        
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        if (isIOS) {
+            // Force canvas to take full viewport
+            setTimeout(resizeCanvas, 100);
+            setTimeout(resizeCanvas, 500);
+            setTimeout(resizeCanvas, 1000);
+            
+            // Ensure Telegram WebApp is expanded
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.expand();
+            }
+        } else {
+            // Xử lý bình thường cho các thiết bị khác
+            resizeCanvas();
+        }
     }
 </script>
 </body>
