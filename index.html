@@ -20,6 +20,20 @@
             box-sizing: border-box;
         }
         
+        /* Add version display style */
+        #version-display {
+            position: fixed;
+            right: 10px;
+            bottom: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            font-family: Arial, sans-serif;
+            z-index: 2147483647;
+            pointer-events: none;
+            mix-blend-mode: difference;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
         /* Hide the footer with title and fullscreen button */
         #unity-footer {
             display: none !important;
@@ -66,6 +80,15 @@
             transform: translate(-50%, -50%);
             z-index: 10;
         }
+        
+        /* Version canvas style */
+        #version-canvas {
+            position: fixed;
+            right: 10px;
+            bottom: 10px;
+            z-index: 2147483647;
+            pointer-events: none;
+        }
     </style>
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes, viewport-fit=cover">
 </head>
@@ -79,7 +102,10 @@
         </div>
     </div>
     <div id="unity-warning"></div>
+
+
 </div>
+<canvas id="version-canvas"></canvas>
 
 <script>
     window.Telegram.WebApp.ready();
@@ -133,12 +159,47 @@
         .then(response => response.text())
         .then(version => {
             console.log("Game version:", version);
+            // Display version using canvas
+            displayVersion(version);
             loadGame(version);
         })
         .catch(error => {
             console.error("Error fetching version:", error);
+            displayVersion("unknown");
             loadGame("unknown");
         });
+
+    function displayVersion(version) {
+        const canvas = document.getElementById('version-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size
+        canvas.width = 200;  // Adjust based on text length
+        canvas.height = 30;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Set text style
+        ctx.font = '12px Arial';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        
+        // Add text shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+        
+        // Calculate text width to position it from the right
+        const text = 'v' + version;
+        const textWidth = ctx.measureText(text).width;
+        
+        // Draw text aligned to the right
+        ctx.fillText(text, canvas.width - textWidth - 10, 20);
+        
+        // Ensure canvas is visible
+        canvas.style.display = 'block';
+    }
 
     function loadGame(version) {
         var buildUrl = "Build";
@@ -153,6 +214,13 @@
             productVersion: version,
             showBanner: unityShowBanner,
         };
+
+        // Ensure version display is visible before loading Unity
+        var versionDisplay = document.getElementById('version-display');
+        if (versionDisplay) {
+            versionDisplay.style.display = 'block';
+            versionDisplay.style.visibility = 'visible';
+        }
 
         loadUnity(loaderUrl, canvas, config);
     }
@@ -176,12 +244,15 @@
                     "Pixel ratio:", pixelRatio,
                     "Viewport:", viewportWidth, "x", viewportHeight);
         
+        // Force a reflow of the entire document
+        document.body.offsetHeight;
+        
         // Notify Unity about resize if instance is ready
         if (unityInstance && isUnityLoaded) {
             try {
-                // Check if the target object and function exist before sending
-                // Note: This basic check might not be foolproof, but helps.
-                // A more robust solution involves a handshake mechanism with Unity.
+
+
+
                 if (unityInstance.Module && 
                     unityInstance.Module.SendMessage) {
                         
@@ -196,12 +267,18 @@
                     console.log("Unity SendMessage function not available yet.");
                 }
             } catch (e) {
-                // Log specific error if SendMessage fails after checks
+
                 console.error("Error sending resize event to Unity:", e);
             }
-        } else {
-            // Log if resize happens before Unity is marked as loaded
-            // console.log("Resize occurred, but Unity not loaded yet. Message not sent.");
+        }
+        
+        // Force version display to be visible
+        const versionDisplay = document.getElementById('version-display');
+        if (versionDisplay) {
+            versionDisplay.style.display = 'block';
+            versionDisplay.style.visibility = 'visible';
+            // Force a reflow
+            versionDisplay.offsetHeight;
         }
     }
     
@@ -259,6 +336,21 @@
                 unityInstance = instance;
                 
                 document.querySelector("#unity-loading-bar").style.display = "none";
+                
+                // Force a reflow of the entire document
+                document.body.offsetHeight;
+                
+                // Remove and re-add Unity canvas to force proper layering
+                const unityContainer = document.getElementById('unity-container');
+                const unityCanvas = document.getElementById('unity-canvas');
+                if (unityContainer && unityCanvas) {
+                    unityContainer.removeChild(unityCanvas);
+                    setTimeout(() => {
+                        unityContainer.appendChild(unityCanvas);
+                        // Force another reflow
+                        unityCanvas.offsetHeight;
+                    }, 0);
+                }
                 
                 // Set fullscreen with device detection
                 if (instance.SetFullscreen) {
