@@ -256,7 +256,7 @@
                 if (unityInstance.Module && 
                     unityInstance.Module.SendMessage) {
                         
-                    unityInstance.SendMessage("WebGLBridge", "OnWindowResize", 
+                    unityInstance.SendMessage("__[ST]_WebGLBridge", "OnWindowResize", 
                         JSON.stringify({
                             width: canvas.width, 
                             height: canvas.height,
@@ -384,16 +384,37 @@
                     console.log("Attempting to send token after delay");
                     try {
                         // Test connection first
-                        instance.SendMessage("WebGLBridge", "TestConnection");
+                        instance.SendMessage("__[ST]_WebGLBridge", "TestConnection");
                         console.log("Test connection successful");
                         
                         // Get and send token
                         const token = getLoginToken();
                         if (token) {
-                            instance.SendMessage("WebGLBridge", "OnLoginTokenReceived", token);
+                            instance.SendMessage("__[ST]_WebGLBridge", "OnLoginTokenReceived", token);
                             console.log("Token sent to Unity:", token);
                         } else {
-                            instance.SendMessage("WebGLBridge", "OnLoginTokenReceived", "");
+                            instance.SendMessage("__[ST]_WebGLBridge", "OnLoginTokenReceived", "");
+                            console.log("No token found in URL, sending default");
+                        }
+                    } catch (error) {
+                        console.error("Error sending message to Unity:", error);
+                    }
+                }, 2000);
+
+                setTimeout(() => {
+                    console.log("Attempting to send token after delay");
+                    try {
+                        // Test connection first
+                        instance.SendMessage("__[ST]_WebGLBridge", "TestConnection");
+                        console.log("Test connection successful");
+                        
+                        // Get and send token
+                        const token = getLoginToken();
+                        if (token) {
+                            instance.SendMessage("__[ST]_WebGLBridge", "OnLoginTokenReceived", token);
+                            console.log("Token sent to Unity:", token);
+                        } else {
+                            instance.SendMessage("__[ST]_WebGLBridge", "OnLoginTokenReceived", "");
                             console.log("No token found in URL, sending default");
                         }
                     } catch (error) {
@@ -413,6 +434,27 @@
         console.log("Current URL:", window.location.href);
         const queryString = window.location.search.substring(1);
         console.log("Full query string:", queryString);
+        
+        // Parse start_param from URL
+        const urlParams = new URLSearchParams(queryString);
+        const startParam = urlParams.get('tgWebAppStartParam');
+        console.log('startParam:', startParam);
+
+        // Check for source parameter
+        if (startParam && startParam.startsWith('source_')) {
+            const source = startParam.split('_')[1];
+            console.log('Source:', source);
+            // Send source to Unity
+            if (unityInstance && unityInstance.SendMessage) {
+                console.log("Attempting to send source to Unity:", source);
+                unityInstance.SendMessage("__[ST]_WebGLBridge", "OnAdsSourceReceived", source);
+                console.log("Source sent to Unity:", source);
+            } else {
+                console.log("Unity instance or SendMessage not available for source");
+            }
+        } else {
+            console.log("No source parameter found in startParam:", startParam);
+        }
         
         if (queryString) {
             return queryString;
