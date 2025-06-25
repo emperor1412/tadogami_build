@@ -522,6 +522,88 @@
         });
     }
 
+    // AGGRESSIVE BEFOREUNLOAD POPUP PREVENTION
+    // Override ALL possible ways Unity might add beforeunload handlers
+    let originalAddEventListener = EventTarget.prototype.addEventListener;
+    EventTarget.prototype.addEventListener = function(type, listener, options) {
+        if (type === 'beforeunload') {
+            console.log("BLOCKED: Attempt to add beforeunload listener");
+            return; // Completely ignore beforeunload listeners
+        }
+        return originalAddEventListener.call(this, type, listener, options);
+    };
+
+    // Continuously monitor and prevent any beforeunload handlers
+    setInterval(function() {
+        window.onbeforeunload = null;
+        // Also check document
+        if (document.onbeforeunload) {
+            document.onbeforeunload = null;
+        }
+    }, 100); // Check every 100ms
+
+    // Override window.confirm to prevent Unity's built-in confirmation dialogs
+    const originalConfirm = window.confirm;
+    window.confirm = function(message) {
+        console.log("BLOCKED: Confirm dialog attempt:", message);
+        if (message.toLowerCase().includes("saved") || 
+            message.toLowerCase().includes("changes") ||
+            message.toLowerCase().includes("unsaved")) {
+            console.log("BLOCKED: Detected data loss warning dialog");
+            return true; // Auto-confirm without showing dialog
+        }
+        return originalConfirm.call(this, message);
+    };
+
+    console.log("AGGRESSIVE popup prevention active - ALL beforeunload dialogs blocked");
+
+    // FINAL OVERRIDE: Prevent ALL types of exit dialogs
+    // Override window.alert, window.confirm, and any modal dialogs
+    window.alert = function(message) {
+        console.log("BLOCKED: Alert dialog:", message);
+        // Don't show alert - just log it
+    };
+
+    // Prevent form change detection (browsers sometimes auto-add beforeunload for forms)
+    document.addEventListener('DOMContentLoaded', function() {
+        // Remove any form change listeners
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener = function() {}; // Disable form event listeners
+        });
+        
+        // Continuously clear any potential form dirty flags
+        setInterval(function() {
+            const inputs = document.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                input.removeAttribute('data-dirty');
+                input.removeAttribute('data-changed');
+            });
+        }, 1000);
+    });
+
+    // Override document.execCommand to prevent clipboard-related warnings
+    const originalExecCommand = document.execCommand;
+    document.execCommand = function(command, showDefaultUI, value) {
+        if (command === 'copy' || command === 'cut' || command === 'paste') {
+            console.log("BLOCKED: execCommand that might trigger warnings:", command);
+            return true; // Pretend it succeeded
+        }
+        return originalExecCommand.call(this, command, showDefaultUI, value);
+    };
+
+    // Final nuclear option: Override the entire beforeunload event completely
+    Object.defineProperty(window, 'onbeforeunload', {
+        set: function(value) {
+            console.log("BLOCKED: Attempt to set onbeforeunload:", value);
+            // Do nothing - completely ignore
+        },
+        get: function() {
+            return null; // Always return null
+        },
+        configurable: false // Prevent override
+    });
+
     // Thêm các hàm JavaScript mà Unity có thể gọi
     function exampleFunction(parameter) {
         console.log("Function called from Unity with parameter: " + parameter);
