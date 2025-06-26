@@ -533,14 +533,11 @@
         return originalAddEventListener.call(this, type, listener, options);
     };
 
-    // Continuously monitor and prevent any beforeunload handlers
-    setInterval(function() {
-        window.onbeforeunload = null;
-        // Also check document
-        if (document.onbeforeunload) {
-            document.onbeforeunload = null;
-        }
-    }, 100); // Check every 100ms
+    // One-time cleanup before property override
+    window.onbeforeunload = null;
+    if (document.onbeforeunload) {
+        document.onbeforeunload = null;
+    }
 
     // Override window.confirm to prevent Unity's built-in confirmation dialogs
     const originalConfirm = window.confirm;
@@ -595,8 +592,11 @@
     // Final nuclear option: Override the entire beforeunload event completely
     Object.defineProperty(window, 'onbeforeunload', {
         set: function(value) {
-            console.log("BLOCKED: Attempt to set onbeforeunload:", value);
-            // Do nothing - completely ignore
+            // Silently ignore all attempts to set onbeforeunload
+            // Only log if it's not null (to avoid spam from clearing attempts)
+            if (value !== null) {
+                console.log("BLOCKED: Attempt to set onbeforeunload:", value);
+            }
         },
         get: function() {
             return null; // Always return null
