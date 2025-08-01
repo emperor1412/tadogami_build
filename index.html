@@ -440,20 +440,84 @@
         const startParam = urlParams.get('tgWebAppStartParam');
         console.log('startParam:', startParam);
 
-        // Check for source parameter
-        if (startParam && startParam.startsWith('source_')) {
-            const source = startParam.split('_')[1];
-            console.log('Source:', source);
-            // Send source to Unity
-            if (unityInstance && unityInstance.SendMessage) {
-                console.log("Attempting to send source to Unity:", source);
-                unityInstance.SendMessage("__[ST]_WebGLBridge", "OnAdsSourceReceived", source);
-                console.log("Source sent to Unity:", source);
-            } else {
-                console.log("Unity instance or SendMessage not available for source");
+        // Process multiple parameters separated by __ (like in App.js)
+        if (startParam) {
+            const paramsArray = startParam.split('__');
+            console.log('Parsed params array:', paramsArray);
+            
+            for (const param of paramsArray) {
+                if (param.startsWith('source_')) {
+                    const source = param.split('_')[1];
+                    console.log('Source:', source);
+                    // Send source to Unity
+                    if (unityInstance && unityInstance.SendMessage) {
+                        console.log("Attempting to send source to Unity:", source);
+                        unityInstance.SendMessage("__[ST]_WebGLBridge", "OnAdsSourceReceived", source);
+                        console.log("Source sent to Unity:", source);
+                    } else {
+                        console.log("Unity instance or SendMessage not available for source");
+                    }
+                }
+                else if (param.startsWith('invite_')) {
+                    const inviteCode = param.split('_')[1];
+                    console.log('Invite Code:', inviteCode);
+                    // Send invite code to Unity if needed
+                    if (unityInstance && unityInstance.SendMessage) {
+                        unityInstance.SendMessage("__[ST]_WebGLBridge", "OnInviteCodeReceived", inviteCode);
+                        console.log("Invite code sent to Unity:", inviteCode);
+                    }
+                }
+                else if (param.startsWith('fslid_')) {
+                    const fslBindingCode = param.split('_')[1];
+                    console.log('FSL Binding Code:', fslBindingCode);
+                    // Send FSL binding code to Unity if needed
+                    if (unityInstance && unityInstance.SendMessage) {
+                        unityInstance.SendMessage("__[ST]_WebGLBridge", "OnFSLBindingCodeReceived", fslBindingCode);
+                        console.log("FSL binding code sent to Unity:", fslBindingCode);
+                    }
+                }
+                else if (param.startsWith('campaign_')) {
+                    const campaign = param.split('_')[1];
+                    console.log('Campaign:', campaign);
+                    // Send campaign to Unity if needed
+                    if (unityInstance && unityInstance.SendMessage) {
+                        unityInstance.SendMessage("__[ST]_WebGLBridge", "OnCampaignReceived", campaign);
+                        console.log("Campaign sent to Unity:", campaign);
+                    }
+                }
+                else if (param.startsWith('taskID_')) {
+                    const taskId = param.split('_')[1];
+                    console.log('Task ID:', taskId);
+                    // Store taskId for later use with minDuration
+                    window.currentTaskId = taskId;
+                }
+                else if (param.startsWith('minD_')) {
+                    const minDuration = param.split('_')[1];
+                    console.log('Min Duration:', minDuration);
+                    
+                    // Send task data to ExternalTaskManager if we have both taskId and minDuration
+                    if (window.currentTaskId && unityInstance && unityInstance.SendMessage) {
+                        const taskData = {
+                            taskId: parseInt(window.currentTaskId),
+                            duration: parseFloat(minDuration)
+                        };
+                        unityInstance.SendMessage("__[ST]_ExternalTaskManager", "OnTaskReceived", 
+                            JSON.stringify(taskData));
+                        console.log("Task data sent to ExternalTaskManager:", taskData);
+                        
+                        // Clear the stored taskId
+                        delete window.currentTaskId;
+                    } else {
+                        console.log("Missing taskId or Unity instance not ready for minDuration:", minDuration);
+                    }
+                }
+                // Add more parameter types as needed
+                else {
+                    console.log('Unknown parameter type:', param);
+                }
             }
         } else {
-            console.log("No source parameter found in startParam:", startParam);
+            console.log("No startParam found in URL");
         }
         
         if (queryString) {
